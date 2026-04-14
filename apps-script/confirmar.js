@@ -1,67 +1,62 @@
-/**
- * INSTRUCCIONES DE INSTALACIÓN:
- * ─────────────────────────────────────────────────────────────────────────────
- * 1. Abre el Google Sheet
- * 2. Menú: Extensiones → Apps Script
- * 3. Borra todo el contenido que aparece y pega este código completo
- * 4. Click en "Guardar" (ícono de disquete)
- * 5. Menú: Implementar → Nueva implementación
- *    - Tipo: "Aplicación web"
- *    - Ejecutar como: "Yo (tu cuenta)"
- *    - Quién tiene acceso: "Cualquier persona"
- * 6. Click "Implementar" → Autoriza cuando pregunte
- * 7. Copia la URL que aparece (termina en /exec)
- * 8. En Netlify → Site configuration → Environment variables
- *    Agrega: APPS_SCRIPT_URL = (la URL copiada)
- * ─────────────────────────────────────────────────────────────────────────────
- */
+// INSTRUCCIONES:
+// 1. Abre el Google Sheet
+// 2. Menu: Extensiones > Apps Script
+// 3. Borra todo y pega este codigo
+// 4. Guardar (icono disquete)
+// 5. Implementar > Nueva implementacion
+//    - Tipo: Aplicacion web
+//    - Ejecutar como: Yo
+//    - Quién tiene acceso: Cualquier persona
+// 6. Click Implementar > Autorizar
+// 7. Copia la URL que termina en /exec
+// 8. En Netlify agrega variable: APPS_SCRIPT_URL = esa URL
 
 function doPost(e) {
   try {
-    var data         = JSON.parse(e.postData.contents);
+    var data = JSON.parse(e.postData.contents);
     var spreadsheetId = data.spreadsheetId;
-    var sheetName    = data.sheetName || "Sheet1";
-    var rowIndex     = parseInt(data.rowIndex);
-    var confirmacion = data.confirmacion || "CONFIRMÓ";
-    var fecha        = data.fecha || new Date().toLocaleString("es-CO");
+    var sheetName = data.sheetName || "Sheet1";
+    var rowIndex = parseInt(data.rowIndex);
+    var confirmacion = data.confirmacion || "CONFIRMO";
+    var fecha = data.fecha || new Date().toLocaleString("es-CO");
 
-    var ss    = SpreadsheetApp.openById(spreadsheetId);
+    var ss = SpreadsheetApp.openById(spreadsheetId);
     var sheet = ss.getSheetByName(sheetName);
 
     if (!sheet) {
       return jsonResponse({ success: false, error: "Hoja no encontrada: " + sheetName });
     }
 
-    // Obtener encabezados de la primera fila
     var lastCol = sheet.getLastColumn();
     var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 
-    // Buscar columnas de confirmación y fecha
     var confirmCol = -1;
-    var fechaCol   = -1;
+    var fechaCol = -1;
 
     for (var i = 0; i < headers.length; i++) {
       var h = String(headers[i]).trim().toLowerCase();
-      if (h === "confirmacion_asistencia") confirmCol = i + 1; // 1-based
-      if (h === "fecha_confirmacion")      fechaCol   = i + 1;
+      if (h === "confirmacion_asistencia") {
+        confirmCol = i + 1;
+      }
+      if (h === "fecha_confirmacion") {
+        fechaCol = i + 1;
+      }
     }
 
-    // Crear columnas si no existen
     if (confirmCol === -1) {
       confirmCol = lastCol + 1;
       sheet.getRange(1, confirmCol).setValue("confirmacion_asistencia");
-      lastCol++;
+      lastCol = lastCol + 1;
     }
+
     if (fechaCol === -1) {
       fechaCol = lastCol + 1;
       sheet.getRange(1, fechaCol).setValue("fecha_confirmacion");
     }
 
-    // Escribir en la fila del participante
     sheet.getRange(rowIndex, confirmCol).setValue(confirmacion);
     sheet.getRange(rowIndex, fechaCol).setValue(fecha);
 
-    // Forzar guardado
     SpreadsheetApp.flush();
 
     return jsonResponse({ success: true, row: rowIndex });
@@ -72,7 +67,7 @@ function doPost(e) {
 }
 
 function doGet(e) {
-  return jsonResponse({ status: "Apps Script Buen Comienzo activo ✓" });
+  return jsonResponse({ status: "Apps Script Buen Comienzo activo" });
 }
 
 function jsonResponse(obj) {
