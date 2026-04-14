@@ -37,15 +37,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Await confirmation so Netlify doesn't cut execution before it finishes
+    // Await confirmation and capture result for debugging
+    let confirmacionOk = false;
+    let confirmacionError = "";
     try {
       await confirmarAsistencia(participante.rowIndex);
+      confirmacionOk = true;
     } catch (err) {
-      console.error("[confirmarAsistencia] Error al actualizar hoja:", err);
+      confirmacionError = String(err);
+      console.error("[confirmarAsistencia] Error:", err);
     }
 
     return NextResponse.json({
       success: true,
+      confirmacion: { ok: confirmacionOk, error: confirmacionError },
       data: {
         nombreCompleto: participante.nombreCompleto,
         nombreSede:     participante.nombreSede,
