@@ -179,21 +179,27 @@ export async function confirmarAsistencia(rowIndex: number): Promise<void> {
     timeZone:  "America/Bogota",
   }).format(new Date());
 
+  const payload = JSON.stringify({
+    spreadsheetId: SPREADSHEET_ID,
+    sheetName:     SHEET_NAME,
+    rowIndex,
+    confirmacion:  "CONFIRMO",
+    fecha:         now,
+  });
+
+  // Content-Type: text/plain evita el preflight CORS y el problema de redirect
+  // donde Google Apps Script convierte el POST en GET perdiendo el body.
   const res = await fetch(scriptUrl, {
     method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      spreadsheetId: SPREADSHEET_ID,
-      sheetName:     SHEET_NAME,
-      rowIndex,
-      confirmacion:  "CONFIRMÓ",
-      fecha:         now,
-    }),
-    // Apps Script redirige → seguimos el redirect
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body:    payload,
     redirect: "follow",
   });
 
-  if (!res.ok) {
-    throw new Error(`Apps Script respondió ${res.status}`);
+  const responseText = await res.text().catch(() => "");
+  console.log("[confirmar] Apps Script response:", res.status, responseText);
+
+  if (!res.ok && res.status !== 302) {
+    throw new Error(`Apps Script respondió ${res.status}: ${responseText}`);
   }
 }

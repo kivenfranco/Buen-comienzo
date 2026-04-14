@@ -79,10 +79,14 @@ function StatCard({
   );
 }
 
+// Normaliza texto: sin tildes, mayúsculas, sin espacios
+const norm = (s: string) =>
+  s.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
 // ─── Badge ────────────────────────────────────────────────────────────────────
 
 function StatusBadge({ value }: { value: string }) {
-  const isConfirmed = value.toUpperCase() === "CONFIRMÓ";
+  const isConfirmed = norm(value) === "CONFIRMO";
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${
@@ -166,11 +170,11 @@ export default function DashboardClient() {
 
     if (tab === "confirmados")
       list = list.filter(
-        (p) => p.confirmacionAsistencia.toUpperCase() === "CONFIRMÓ"
+        (p) => norm(p.confirmacionAsistencia) === "CONFIRMO"
       );
     else if (tab === "pendientes")
       list = list.filter(
-        (p) => p.confirmacionAsistencia.toUpperCase() !== "CONFIRMÓ"
+        (p) => norm(p.confirmacionAsistencia) !== "CONFIRMO"
       );
 
     if (search.trim()) {

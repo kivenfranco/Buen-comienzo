@@ -16,12 +16,12 @@ export async function GET(request: NextRequest) {
   try {
     const participantes = await getAllParticipantes();
 
-    const confirmados = participantes.filter(
-      (p) => p.confirmacionAsistencia.trim().toUpperCase() === "CONFIRMÓ"
-    );
-    const pendientes = participantes.filter(
-      (p) => p.confirmacionAsistencia.trim().toUpperCase() !== "CONFIRMÓ"
-    );
+    const esConfirmado = (v: string) => {
+      const u = v.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      return u === "CONFIRMO";
+    };
+    const confirmados = participantes.filter((p) => esConfirmado(p.confirmacionAsistencia));
+    const pendientes  = participantes.filter((p) => !esConfirmado(p.confirmacionAsistencia));
 
     return NextResponse.json({
       success: true,
