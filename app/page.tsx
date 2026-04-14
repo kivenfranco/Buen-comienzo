@@ -33,19 +33,19 @@ export default function HomePage() {
         >
           {/* Logo — grande y visible */}
           <div className="mb-6 flex justify-center">
-            <div className="relative flex h-36 w-36 items-center justify-center rounded-3xl border-2 border-white/40 bg-white/90 shadow-2xl p-3">
+            <div className="relative flex h-56 w-56 items-center justify-center rounded-3xl border-2 border-white/50 bg-white shadow-2xl p-4">
               <Image
                 src="/logo.png"
                 alt="Logo Buen Comienzo"
-                width={120}
-                height={120}
+                width={210}
+                height={210}
                 className="object-contain drop-shadow-md"
                 priority
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = "none";
                 }}
               />
-              <span className="absolute text-5xl select-none pointer-events-none opacity-0 [img:not([src])_~_&]:opacity-100">
+              <span className="absolute text-6xl select-none pointer-events-none opacity-0 [img:not([src])_~_&]:opacity-100">
                 🌱
               </span>
             </div>

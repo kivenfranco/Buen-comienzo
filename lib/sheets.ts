@@ -171,7 +171,7 @@ export async function getAllParticipantes(): Promise<ParticipanteData[]> {
 export async function confirmarAsistencia(rowIndex: number): Promise<void> {
   const scriptUrl =
     process.env.APPS_SCRIPT_URL ??
-    "https://script.google.com/macros/s/AKfycbzNjt06fRGu6APLGvqXuh20wREXk0AUw6VpShizUrdg4r7HRYwcnQvFgmdOBSxUwIjcZg/exec";
+    "https://script.google.com/macros/s/AKfycbyDg8MaPx4GSnFb7HsDJqyMf54YWho_cUtdLkZ1grgV7kgo6bdRNZfVGuJSGI8Z5wq2EA/exec";
 
   const now = new Intl.DateTimeFormat("es-CO", {
     dateStyle: "short",
