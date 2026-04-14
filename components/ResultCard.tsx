@@ -7,7 +7,7 @@ import {
   Package,
   Clock,
   CheckCircle2,
-  IdCard,
+  CreditCard,
 } from "lucide-react";
 
 interface ResultData {
@@ -101,7 +101,7 @@ export default function ResultCard({ data }: Props) {
           value={data.nombreCompleto}
         />
         <InfoItem
-          icon={<IdCard className="h-5 w-5 text-white" />}
+          icon={<CreditCard className="h-5 w-5 text-white" />}
           label="Identificación"
           value={data.identificacion}
         />
