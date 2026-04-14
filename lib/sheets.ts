@@ -1,4 +1,15 @@
-import { google } from "googleapis";
+/**
+ * lib/sheets.ts
+ *
+ * LECTURA  → URL pública CSV de Google Sheets (sheet público, sin credenciales)
+ * ESCRITURA → Google Apps Script Web App (sin credenciales, publicado como "Anyone")
+ */
+
+const SPREADSHEET_ID =
+  process.env.GOOGLE_SPREADSHEET_ID ??
+  "17MlwQuAgBGFWJQBpSd7yAZZ3DHghc3uMIqNSTUU2Zf0";
+
+const SHEET_NAME = process.env.GOOGLE_SHEET_NAME ?? "Sheet1";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -13,9 +24,69 @@ export interface ParticipanteData {
   fechaConfirmacion:      string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── CSV parser ───────────────────────────────────────────────────────────────
+// Maneja campos con comas, comillas y saltos de línea dentro de comillas.
 
-function normalizeHeader(h: string): string {
+function parseCSV(raw: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[]      = [];
+  let field              = "";
+  let inQuotes           = false;
+  let i                  = 0;
+
+  while (i < raw.length) {
+    const ch   = raw[i];
+    const next = raw[i + 1];
+
+    if (inQuotes) {
+      if (ch === '"' && next === '"') {
+        field += '"';
+        i += 2;
+      } else if (ch === '"') {
+        inQuotes = false;
+        i++;
+      } else {
+        field += ch;
+        i++;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+        i++;
+      } else if (ch === ",") {
+        row.push(field);
+        field = "";
+        i++;
+      } else if (ch === "\r" && next === "\n") {
+        row.push(field);
+        rows.push(row);
+        row   = [];
+        field = "";
+        i += 2;
+      } else if (ch === "\n" || ch === "\r") {
+        row.push(field);
+        rows.push(row);
+        row   = [];
+        field = "";
+        i++;
+      } else {
+        field += ch;
+        i++;
+      }
+    }
+  }
+
+  if (field || row.length) {
+    row.push(field);
+    if (row.some((c) => c !== "")) rows.push(row);
+  }
+
+  return rows;
+}
+
+// ─── Normalize header names ───────────────────────────────────────────────────
+
+function norm(h: string): string {
   return h
     .trim()
     .toLowerCase()
@@ -24,165 +95,84 @@ function normalizeHeader(h: string): string {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-function columnLetter(n: number): string {
-  let result = "";
-  while (n > 0) {
-    n--;
-    result = String.fromCharCode(65 + (n % 26)) + result;
-    n      = Math.floor(n / 26);
-  }
-  return result;
-}
-
-// ─── READ via API Key (sheet must be public / shared with viewer) ─────────────
-// Si el sheet está publicado o compartido como "cualquiera con el enlace puede ver",
-// solo se necesita GOOGLE_API_KEY para leer. Sin Service Account.
+// ─── Fetch sheet as 2D array ──────────────────────────────────────────────────
 
 async function fetchSheetValues(): Promise<string[][]> {
-  const apiKey        = process.env.GOOGLE_API_KEY;
-  const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID!;
-  const sheetName     = encodeURIComponent(
-    process.env.GOOGLE_SHEET_NAME ?? "Sheet1"
-  );
+  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
 
-  if (!apiKey) {
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
     throw new Error(
-      "Falta GOOGLE_API_KEY en las variables de entorno. Necesaria para leer el Sheet."
+      `No se pudo leer el Google Sheet (HTTP ${res.status}). Verifica que el sheet sea público.`
     );
   }
 
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheetName}?key=${apiKey}`;
-  const res  = await fetch(url, { cache: "no-store" });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Error leyendo Google Sheets: ${res.status} ${err}`);
-  }
-
-  const json = await res.json();
-  return (json.values ?? []) as string[][];
+  const csv = await res.text();
+  return parseCSV(csv);
 }
 
-// ─── Parse rows → typed objects ───────────────────────────────────────────────
+// ─── Parse rows into typed objects ────────────────────────────────────────────
 
-function parseRows(rawRows: string[][]): {
-  headers: string[];
-  participantes: ParticipanteData[];
-} {
-  if (rawRows.length === 0) return { headers: [], participantes: [] };
+function parseRows(rawRows: string[][]): ParticipanteData[] {
+  if (rawRows.length < 2) return [];
 
-  const headers    = rawRows[0].map(normalizeHeader);
-  const dataRows   = rawRows.slice(1);
+  const headers = rawRows[0].map(norm);
 
-  const get = (row: string[], key: string) =>
-    (row[headers.indexOf(normalizeHeader(key))] ?? "").trim();
+  const get = (row: string[], key: string) => {
+    const idx = headers.indexOf(norm(key));
+    return idx >= 0 ? (row[idx] ?? "").trim() : "";
+  };
 
-  const participantes: ParticipanteData[] = dataRows.map((row, i) => {
-    const nombreCompleto = [
-      get(row, "primer_nombre_participante"),
-      get(row, "segundo_nombre_participante"),
-      get(row, "primer_apellido_participante"),
-      get(row, "segundo_apellido_participante"),
-    ]
-      .filter(Boolean)
-      .join(" ");
+  return rawRows
+    .slice(1)
+    .map((row, i) => {
+      const nombreCompleto = [
+        get(row, "primer_nombre_participante"),
+        get(row, "segundo_nombre_participante"),
+        get(row, "primer_apellido_participante"),
+        get(row, "segundo_apellido_participante"),
+      ]
+        .filter(Boolean)
+        .join(" ");
 
-    return {
-      rowIndex:               i + 2, // 1-based header + 1
-      identificacion:         get(row, "identificacion_participante"),
-      nombreCompleto,
-      nombreSede:             get(row, "nombre_sede"),
-      tipoPaquete:            get(row, "TIPO PAQUETE"),
-      horaCitacion:           get(row, "HORA DE CITACION"),
-      confirmacionAsistencia: get(row, "confirmacion_asistencia"),
-      fechaConfirmacion:      get(row, "fecha_confirmacion"),
-    };
-  });
-
-  return { headers, participantes };
+      return {
+        rowIndex:               i + 2,
+        identificacion:         get(row, "identificacion_participante"),
+        nombreCompleto,
+        nombreSede:             get(row, "nombre_sede"),
+        tipoPaquete:            get(row, "TIPO PAQUETE"),
+        horaCitacion:           get(row, "HORA DE CITACION"),
+        confirmacionAsistencia: get(row, "confirmacion_asistencia"),
+        fechaConfirmacion:      get(row, "fecha_confirmacion"),
+      };
+    })
+    .filter((p) => p.identificacion !== "");
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-/** Busca un participante por identificación exacta */
 export async function buscarParticipante(
   identificacion: string
 ): Promise<ParticipanteData | null> {
-  const rawRows = await fetchSheetValues();
-  const { participantes } = parseRows(rawRows);
-
-  return (
-    participantes.find(
-      (p) => p.identificacion === identificacion.trim()
-    ) ?? null
-  );
+  const raw           = await fetchSheetValues();
+  const participantes = parseRows(raw);
+  return participantes.find((p) => p.identificacion === identificacion.trim()) ?? null;
 }
 
-/** Retorna todos los participantes (para el dashboard) */
 export async function getAllParticipantes(): Promise<ParticipanteData[]> {
-  const rawRows = await fetchSheetValues();
-  const { participantes } = parseRows(rawRows);
-  // Excluir filas sin identificación
-  return participantes.filter((p) => p.identificacion !== "");
+  const raw = await fetchSheetValues();
+  return parseRows(raw);
 }
 
-// ─── WRITE via Service Account ────────────────────────────────────────────────
-// Para escribir en el sheet se necesita un Service Account aunque el sheet sea público.
+// ─── Write via Apps Script Web App ────────────────────────────────────────────
+// El Apps Script está publicado como "Anyone can access" → no requiere credenciales.
+// Si APPS_SCRIPT_URL no está configurada, la confirmación se omite silenciosamente.
 
-function getAuthClient() {
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const key   = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-
-  if (!email || !key) {
-    throw new Error(
-      "Faltan GOOGLE_SERVICE_ACCOUNT_EMAIL o GOOGLE_PRIVATE_KEY para escribir en el Sheet."
-    );
-  }
-
-  return new google.auth.JWT({
-    email,
-    key,
-    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-  });
-}
-
-/** Marca confirmacion_asistencia = CONFIRMÓ y registra fecha/hora */
 export async function confirmarAsistencia(rowIndex: number): Promise<void> {
-  const auth          = getAuthClient();
-  const sheets        = google.sheets({ version: "v4", auth });
-  const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID!;
-  const sheetName     = process.env.GOOGLE_SHEET_NAME ?? "Sheet1";
-
-  // Obtener headers para localizar columnas
-  const headerRes = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range: `${sheetName}!1:1`,
-  });
-
-  const headerRow        = ((headerRes.data.values ?? [[]])[0] ?? []) as string[];
-  const normalizedHdrs   = headerRow.map(normalizeHeader);
-  const lastCol          = headerRow.length;
-
-  let confirmCol = normalizedHdrs.indexOf(normalizeHeader("confirmacion_asistencia"));
-  let fechaCol   = normalizedHdrs.indexOf(normalizeHeader("fecha_confirmacion"));
-
-  const updates: { range: string; values: string[][] }[] = [];
-
-  // Crear columnas si no existen
-  if (confirmCol === -1) {
-    confirmCol = lastCol;
-    updates.push({
-      range:  `${sheetName}!${columnLetter(confirmCol + 1)}1`,
-      values: [["confirmacion_asistencia"]],
-    });
-  }
-  if (fechaCol === -1) {
-    fechaCol = Math.max(lastCol, confirmCol + 1);
-    if (fechaCol === confirmCol) fechaCol++;
-    updates.push({
-      range:  `${sheetName}!${columnLetter(fechaCol + 1)}1`,
-      values: [["fecha_confirmacion"]],
-    });
+  const scriptUrl = process.env.APPS_SCRIPT_URL;
+  if (!scriptUrl) {
+    console.warn("[confirmar] APPS_SCRIPT_URL no configurada — confirmación omitida.");
+    return;
   }
 
   const now = new Intl.DateTimeFormat("es-CO", {
@@ -191,22 +181,21 @@ export async function confirmarAsistencia(rowIndex: number): Promise<void> {
     timeZone:  "America/Bogota",
   }).format(new Date());
 
-  updates.push(
-    {
-      range:  `${sheetName}!${columnLetter(confirmCol + 1)}${rowIndex}`,
-      values: [["CONFIRMÓ"]],
-    },
-    {
-      range:  `${sheetName}!${columnLetter(fechaCol + 1)}${rowIndex}`,
-      values: [[now]],
-    }
-  );
-
-  await sheets.spreadsheets.values.batchUpdate({
-    spreadsheetId,
-    requestBody: {
-      valueInputOption: "RAW",
-      data: updates.map((u) => ({ range: u.range, values: u.values })),
-    },
+  const res = await fetch(scriptUrl, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      spreadsheetId: SPREADSHEET_ID,
+      sheetName:     SHEET_NAME,
+      rowIndex,
+      confirmacion:  "CONFIRMÓ",
+      fecha:         now,
+    }),
+    // Apps Script redirige → seguimos el redirect
+    redirect: "follow",
   });
+
+  if (!res.ok) {
+    throw new Error(`Apps Script respondió ${res.status}`);
+  }
 }

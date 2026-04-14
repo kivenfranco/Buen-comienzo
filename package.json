@@ -13,8 +13,7 @@
     "react": "^18",
     "react-dom": "^18",
     "framer-motion": "^11.3.0",
-    "googleapis": "^144.0.0",
-    "lucide-react": "^0.417.0",
+"lucide-react": "^0.417.0",
     "clsx": "^2.1.1"
   },
   "devDependencies": {

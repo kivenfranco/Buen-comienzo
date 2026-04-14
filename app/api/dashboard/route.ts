@@ -3,10 +3,10 @@ import { getAllParticipantes } from "@/lib/sheets";
 
 export async function GET(request: NextRequest) {
   // Protección mínima por clave en query param
-  const pwd     = request.nextUrl.searchParams.get("pwd");
-  const envPwd  = process.env.DASHBOARD_PASSWORD;
+  const pwd    = request.nextUrl.searchParams.get("pwd");
+  const envPwd = process.env.DASHBOARD_PASSWORD ?? "buencomienzo123";
 
-  if (envPwd && pwd !== envPwd) {
+  if (pwd !== envPwd) {
     return NextResponse.json(
       { success: false, message: "Acceso no autorizado." },
       { status: 401 }
