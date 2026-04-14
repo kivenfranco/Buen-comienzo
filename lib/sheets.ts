@@ -169,11 +169,9 @@ export async function getAllParticipantes(): Promise<ParticipanteData[]> {
 // Si APPS_SCRIPT_URL no está configurada, la confirmación se omite silenciosamente.
 
 export async function confirmarAsistencia(rowIndex: number): Promise<void> {
-  const scriptUrl = process.env.APPS_SCRIPT_URL;
-  if (!scriptUrl) {
-    console.warn("[confirmar] APPS_SCRIPT_URL no configurada — confirmación omitida.");
-    return;
-  }
+  const scriptUrl =
+    process.env.APPS_SCRIPT_URL ??
+    "https://script.google.com/macros/s/AKfycbzNjt06fRGu6APLGvqXuh20wREXk0AUw6VpShizUrdg4r7HRYwcnQvFgmdOBSxUwIjcZg/exec";
 
   const now = new Intl.DateTimeFormat("es-CO", {
     dateStyle: "short",
