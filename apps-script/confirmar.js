@@ -1,34 +1,26 @@
-// INSTRUCCIONES:
-// 1. Abre el Google Sheet
-// 2. Menu: Extensiones > Apps Script
-// 3. Borra todo y pega este codigo
-// 4. Guardar (icono disquete)
-// 5. Implementar > Nueva implementacion
-//    - Tipo: Aplicacion web
-//    - Ejecutar como: Yo
-//    - Quien tiene acceso: Cualquier persona
-// 6. Implementar > Autorizar
-// 7. Copia la URL que termina en /exec y ponla en APPS_SCRIPT_URL
+// INSTRUCCIONES PARA ACTUALIZAR:
+// 1. Abre el Apps Script (Extensions > Apps Script en el Sheet)
+// 2. Borra todo y pega este codigo
+// 3. Guardar
+// 4. Implementar > Administrar implementaciones > editar el lapiz
+// 5. En "Version" selecciona "Nueva version"
+// 6. Guardar - usa la misma URL, no necesitas cambiar nada en Netlify
 
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
     var spreadsheetId = data.spreadsheetId;
-    var sheetName = data.sheetName || "Sheet1";
     var rowIndex = parseInt(data.rowIndex);
     var confirmacion = data.confirmacion || "CONFIRMO";
     var fecha = data.fecha || new Date().toLocaleString("es-CO");
 
     var ss = SpreadsheetApp.openById(spreadsheetId);
 
-    // Intentar por nombre, si no existe usar la primera hoja
-    var sheet = ss.getSheetByName(sheetName);
-    if (!sheet) {
-      sheet = ss.getSheets()[0];
-    }
+    // Usar SIEMPRE la primera hoja, sin importar el nombre
+    var sheet = ss.getSheets()[0];
 
     var lastCol = sheet.getLastColumn();
-    if (lastCol === 0) lastCol = 1;
+    if (lastCol < 1) lastCol = 1;
 
     var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 
@@ -61,7 +53,13 @@ function doPost(e) {
 
     SpreadsheetApp.flush();
 
-    return jsonResponse({ success: true, row: rowIndex, sheet: sheet.getName() });
+    return jsonResponse({
+      success: true,
+      row: rowIndex,
+      sheet: sheet.getName(),
+      confirmCol: confirmCol,
+      fechaCol: fechaCol
+    });
 
   } catch (err) {
     return jsonResponse({ success: false, error: err.message });
@@ -69,7 +67,13 @@ function doPost(e) {
 }
 
 function doGet(e) {
-  return jsonResponse({ status: "Apps Script Buen Comienzo activo" });
+  var ss = SpreadsheetApp.openById("17MlwQuAgBGFWJQBpSd7yAZZ3DHghc3uMIqNSTUU2Zf0");
+  var sheet = ss.getSheets()[0];
+  return jsonResponse({
+    status: "activo",
+    primeraHoja: sheet.getName(),
+    totalFilas: sheet.getLastRow()
+  });
 }
 
 function jsonResponse(obj) {
