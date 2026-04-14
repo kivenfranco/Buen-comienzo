@@ -6,10 +6,9 @@
 // 5. Implementar > Nueva implementacion
 //    - Tipo: Aplicacion web
 //    - Ejecutar como: Yo
-//    - Quién tiene acceso: Cualquier persona
-// 6. Click Implementar > Autorizar
-// 7. Copia la URL que termina en /exec
-// 8. En Netlify agrega variable: APPS_SCRIPT_URL = esa URL
+//    - Quien tiene acceso: Cualquier persona
+// 6. Implementar > Autorizar
+// 7. Copia la URL que termina en /exec y ponla en APPS_SCRIPT_URL
 
 function doPost(e) {
   try {
@@ -21,13 +20,16 @@ function doPost(e) {
     var fecha = data.fecha || new Date().toLocaleString("es-CO");
 
     var ss = SpreadsheetApp.openById(spreadsheetId);
-    var sheet = ss.getSheetByName(sheetName);
 
+    // Intentar por nombre, si no existe usar la primera hoja
+    var sheet = ss.getSheetByName(sheetName);
     if (!sheet) {
-      return jsonResponse({ success: false, error: "Hoja no encontrada: " + sheetName });
+      sheet = ss.getSheets()[0];
     }
 
     var lastCol = sheet.getLastColumn();
+    if (lastCol === 0) lastCol = 1;
+
     var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 
     var confirmCol = -1;
@@ -59,7 +61,7 @@ function doPost(e) {
 
     SpreadsheetApp.flush();
 
-    return jsonResponse({ success: true, row: rowIndex });
+    return jsonResponse({ success: true, row: rowIndex, sheet: sheet.getName() });
 
   } catch (err) {
     return jsonResponse({ success: false, error: err.message });

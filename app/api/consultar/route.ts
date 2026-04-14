@@ -37,10 +37,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Trigger background confirmation update (don't await — respond fast)
-    confirmarAsistencia(participante.rowIndex).catch((err) => {
+    // Await confirmation so Netlify doesn't cut execution before it finishes
+    try {
+      await confirmarAsistencia(participante.rowIndex);
+    } catch (err) {
       console.error("[confirmarAsistencia] Error al actualizar hoja:", err);
-    });
+    }
 
     return NextResponse.json({
       success: true,

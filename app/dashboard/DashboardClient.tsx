@@ -247,7 +247,7 @@ export default function DashboardClient() {
         className="flex min-h-dvh items-center justify-center px-4"
         style={{
           background:
-            "linear-gradient(160deg,#1a3a1a 0%,#1b5e20 30%,#2e7d32 60%,#3d2b00 100%)",
+            "linear-gradient(160deg,#0369a1 0%,#0284c7 30%,#0ea5e9 65%,#38bdf8 100%)",
         }}
       >
         <motion.div
@@ -322,7 +322,7 @@ export default function DashboardClient() {
       className="min-h-dvh"
       style={{
         background:
-          "linear-gradient(160deg,#1a3a1a 0%,#1b5e20 30%,#2e7d32 60%,#3d2b00 100%)",
+          "linear-gradient(160deg,#0369a1 0%,#0284c7 30%,#0ea5e9 65%,#38bdf8 100%)",
       }}
     >
       <div className="mx-auto max-w-5xl px-4 pb-16 pt-8">
