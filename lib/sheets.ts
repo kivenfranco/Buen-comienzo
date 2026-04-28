@@ -141,7 +141,7 @@ function parseRows(rawRows: string[][]): ParticipanteData[] {
         nombreCompleto,
         nombreSede:             get(row, "nombre_sede"),
         tipoPaquete:            get(row, "TIPO PAQUETE"),
-        horaCitacion:           get(row, "HORA DE CITACION"),
+        horaCitacion:           get(row, "HORA"),
         confirmacionAsistencia: get(row, "confirmacion_asistencia"),
         fechaConfirmacion:      get(row, "fecha_confirmacion"),
       };
